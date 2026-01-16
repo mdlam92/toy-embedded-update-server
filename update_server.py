@@ -94,10 +94,7 @@ async def update(request: Request, x_signature: str = Header()):
     trusted_keys = load_trusted_keys()
     if not trusted_keys:
         raise HTTPException(500, "No trusted keys configured")
-    
-    if not verify_signature(update_data, signature, trusted_keys):
-        raise HTTPException(401, "Invalid signature")
-    
+
     # Extract and install
     with tempfile.TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
@@ -107,11 +104,16 @@ async def update(request: Request, x_signature: str = Header()):
         extract_dir = tmp_path / "extracted"
         extract_dir.mkdir()
         extract_update(tarball_path, extract_dir)
+
+        if not verify_signature(update_data, signature, trusted_keys):
+            raise HTTPException(401, "Invalid signature")
         
         try:
             install_images(extract_dir)
         except FileNotFoundError as e:
             raise HTTPException(400, str(e))
+    
+
     
     return {"status": "ok"}
 
